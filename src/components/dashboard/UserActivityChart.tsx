@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { format } from "date-fns";
 
 // Generate activity data for a full week with hourly data
@@ -121,7 +121,10 @@ export function UserActivityChart() {
               <ChartTooltip
                 content={({ active, payload, label }) => {
                   if (active && payload && payload.length) {
-                    const hour = payload[0].name ? payload[0].name.split('_')[1] : '';
+                    // Fix the error by checking if payload[0].name is a string before using split
+                    const hourKey = payload[0].name?.toString() || '';
+                    const hour = hourKey.startsWith('hour_') ? hourKey.split('_')[1] : '';
+                    
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="font-medium">{label} at {hour}:00</div>
@@ -153,7 +156,7 @@ export function UserActivityChart() {
       </div>
       
       {selectedDay && selectedHour !== null && (
-        <Card>
+        <Card className="mt-6">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Activity Details - {selectedDay} at {selectedHour}:00
