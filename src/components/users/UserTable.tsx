@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -17,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { RoleBadge } from "./RoleBadge";
 import { StatusBadge } from "./StatusBadge";
@@ -26,13 +24,18 @@ import { User, UserRole } from "@/types/user";
 import { users } from "@/data/userData";
 import { formatDistanceToNow } from "date-fns";
 
-export function UserTable() {
-  const navigate = useNavigate();
+interface UserTableProps {
+  onUserSelect?: (userId: number) => void;
+  selectedUserId?: number | null;
+  refresh?: number;
+}
+
+export function UserTable({ onUserSelect, selectedUserId, refresh = 0 }: UserTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
-  const [refresh, setRefresh] = useState(0);
+  const [internalRefresh, setInternalRefresh] = useState(0);
   
   // Apply filters
   useEffect(() => {
@@ -60,15 +63,17 @@ export function UserTable() {
     }
     
     setFilteredUsers(result);
-  }, [searchTerm, roleFilter, statusFilter, refresh]);
+  }, [searchTerm, roleFilter, statusFilter, refresh, internalRefresh]);
 
   const handleRowClick = (id: number) => {
-    navigate(`/users/${id}`);
+    if (onUserSelect) {
+      onUserSelect(id);
+    }
   };
   
   const handleRoleUpdated = () => {
     // Trigger a re-render to show updated data
-    setRefresh(prev => prev + 1);
+    setInternalRefresh(prev => prev + 1);
   };
   
   return (
@@ -133,7 +138,7 @@ export function UserTable() {
               filteredUsers.map((user) => (
                 <TableRow 
                   key={user.id} 
-                  className="cursor-pointer"
+                  className={`cursor-pointer ${selectedUserId === user.id ? 'bg-muted' : ''}`}
                   onClick={(e) => {
                     // Don't navigate if clicking on actions
                     if ((e.target as HTMLElement).closest('button')) return;

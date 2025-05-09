@@ -1,8 +1,7 @@
 
 import { Users, UserCheck, UserX } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
-import { RoleDistributionChart } from "@/components/dashboard/RoleDistributionChart";
-import { UserTable } from "@/components/users/UserTable";
+import { UserActivityChart } from "@/components/dashboard/UserActivityChart";
 import { getUserStats } from "@/data/userData";
 
 const Dashboard = () => {
@@ -28,22 +27,11 @@ const Dashboard = () => {
         />
       </div>
       
-      <div className="grid gap-6 md:grid-cols-2">
-        <RoleDistributionChart stats={stats} />
-        
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold">User Activity</h2>
-          <div className="h-[300px] rounded-md border bg-white p-6 flex items-center justify-center">
-            <p className="text-muted-foreground">Activity graph will be added here</p>
-          </div>
-        </div>
-      </div>
-      
       <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Recently Active Users</h2>
+        <h2 className="text-xl font-semibold">User Activity</h2>
+        <div className="rounded-md border bg-white p-6">
+          <UserActivityChart />
         </div>
-        <UserTable />
       </div>
     </div>
   );
