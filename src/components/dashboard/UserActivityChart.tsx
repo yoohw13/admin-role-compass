@@ -2,127 +2,218 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { format } from "date-fns";
 
-// Sample data - in a real application, this would come from an API
+// Generate activity data for a full week with hourly data
 const generateActivityData = () => {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+  // Generate dates for the past week
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - 6 + i);
+    return format(date, 'EEE, MMM d');
+  });
   
-  return days.map(day => ({
-    name: day,
-    ...hours.reduce((acc, hour) => {
-      // Different activity patterns for different user types
-      const adminCount = Math.floor(Math.random() * 3);
-      const managerCount = Math.floor(Math.random() * 5);
-      const employeeCount = Math.floor(Math.random() * 10);
-      const guestCount = Math.floor(Math.random() * 4);
+  // Generate hours for each day
+  return dates.map(date => {
+    const hourData: Record<string, any> = { name: date };
+    
+    // Add data for each hour (0-23)
+    for (let hour = 0; hour < 24; hour++) {
+      // Generate random user counts for each role
+      const adminUsers = Array.from({ length: Math.floor(Math.random() * 2) }, (_, i) => ({
+        id: `admin-${i}`,
+        role: 'Admin',
+        activity: `Performed system check at ${hour}:00`
+      }));
       
-      acc[`hour_${hour}`] = {
-        Admin: adminCount,
-        Manager: managerCount,
-        Employee: employeeCount,
-        Guest: guestCount,
-        total: adminCount + managerCount + employeeCount + guestCount
+      const managerUsers = Array.from({ length: Math.floor(Math.random() * 3) }, (_, i) => ({
+        id: `manager-${i}`,
+        role: 'Manager',
+        activity: `Reviewed team data at ${hour}:00`
+      }));
+      
+      const employeeUsers = Array.from({ length: Math.floor(Math.random() * 5) }, (_, i) => ({
+        id: `employee-${i}`,
+        role: 'Employee',
+        activity: `Updated task status at ${hour}:00`
+      }));
+      
+      const guestUsers = Array.from({ length: Math.floor(Math.random() * 2) }, (_, i) => ({
+        id: `guest-${i}`,
+        role: 'Guest',
+        activity: `Viewed dashboard at ${hour}:00`
+      }));
+      
+      // Combine all users for this hour
+      const users = [...adminUsers, ...managerUsers, ...employeeUsers, ...guestUsers];
+      
+      // Store the user records and count
+      hourData[`hour_${hour}`] = {
+        users,
+        count: users.length
       };
-      return acc;
-    }, {})
-  }));
+    }
+    
+    return hourData;
+  });
 };
+
+interface UserActivity {
+  id: string;
+  role: string;
+  activity: string;
+}
 
 export function UserActivityChart() {
   const [activityData] = useState(generateActivityData);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserActivity | null>(null);
   
-  // Hours of the day
-  const hours = [0, 3, 6, 9, 12, 15, 18, 21];
-  
-  // Prepare data for the chart - aggregate by hours
+  // For the chart, we need to transform the data to show hourly counts
   const chartData = activityData.map(day => {
-    const hourData = hours.reduce((acc, hour) => {
-      acc[`hour_${hour}`] = day[`hour_${hour}`].total;
-      return acc;
-    }, {} as Record<string, number>);
+    const result: Record<string, any> = { name: day.name };
     
-    return {
-      name: day.name,
-      ...hourData
-    };
+    // Add count for each hour
+    for (let hour = 0; hour < 24; hour++) {
+      result[`hour_${hour}`] = day[`hour_${hour}`].count;
+    }
+    
+    return result;
   });
   
-  const handleBarClick = (data: any) => {
-    const hourKey = Object.keys(data).find(key => key.startsWith('hour_'));
+  const handleBarClick = (data: any, index: number) => {
+    const hourKey = Object.keys(data).find(key => key.startsWith('hour_') && key !== 'name');
+    
     if (hourKey) {
       const hour = parseInt(hourKey.split('_')[1]);
+      const day = data.name;
+      
+      setSelectedDay(day);
       setSelectedHour(hour);
+      setSelectedUser(null); // Reset selected user when changing hours
     }
   };
+  
+  const handleUserSelect = (user: UserActivity) => {
+    setSelectedUser(user);
+  };
+  
+  const hours = Array.from({ length: 24 }, (_, i) => i);
   
   return (
     <div className="space-y-4">
       <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip 
-              formatter={(value, name) => {
-                if (typeof name === 'string') {
-                  const hourMatch = name.match(/hour_(\d+)/);
-                  if (hourMatch) {
-                    return [`${value} users`, `${hourMatch[1]}:00`];
-                  }
-                }
-                return [value, name];
-              }}
-            />
-            <Legend />
-            {hours.map((hour, index) => (
-              <Bar 
-                key={hour}
-                dataKey={`hour_${hour}`} 
-                name={`${hour}:00`}
-                stackId="a" 
-                fill={`hsl(${210 + index * 30}, 80%, 60%)`} 
-                onClick={handleBarClick}
+        <ChartContainer config={{
+          user: { theme: { light: '#0A84FF', dark: '#0A84FF' } }
+        }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                label={{ value: 'Day of Week', position: 'insideBottom', offset: -5 }} 
               />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
+              <YAxis 
+                label={{ value: 'Number of Users', angle: -90, position: 'insideLeft' }} 
+              />
+              <ChartTooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const hour = payload[0].name ? payload[0].name.split('_')[1] : '';
+                    return (
+                      <div className="rounded-lg border bg-background p-2 shadow-sm">
+                        <div className="font-medium">{label} at {hour}:00</div>
+                        <div className="text-xs text-muted-foreground">
+                          {payload[0].value} active users
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend />
+              
+              {hours.map((hour) => (
+                <Bar 
+                  key={hour}
+                  dataKey={`hour_${hour}`} 
+                  name={`${hour}:00`}
+                  stackId="a" 
+                  fill={`hsl(${210 + hour * 6}, 80%, 60%)`}
+                  onClick={handleBarClick}
+                  isAnimationActive={false}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
       </div>
       
-      {selectedHour !== null && (
+      {selectedDay && selectedHour !== null && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Activity Details - {selectedHour}:00</CardTitle>
-            <CardDescription>User breakdown by role</CardDescription>
+            <CardTitle className="text-sm font-medium">
+              Activity Details - {selectedDay} at {selectedHour}:00
+            </CardTitle>
+            <CardDescription>
+              {selectedUser ? `User Activity Log` : `${activityData.find(d => d.name === selectedDay)?.[`hour_${selectedHour}`].users.length} active users`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-2">
-              {activityData.map((day) => (
-                <div key={day.name} className="space-y-1">
-                  <p className="text-sm font-medium">{day.name}</p>
-                  <ul className="text-xs space-y-1">
-                    <li className="flex justify-between">
-                      <span>Admin:</span> 
-                      <span>{day[`hour_${selectedHour}`].Admin}</span>
+            {!selectedUser ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {activityData
+                  .find(d => d.name === selectedDay)
+                  ?.[`hour_${selectedHour}`].users.map((user: UserActivity, index: number) => (
+                    <div 
+                      key={`${user.id}-${index}`}
+                      className="p-2 border rounded-md cursor-pointer hover:bg-accent"
+                      onClick={() => handleUserSelect(user)}
+                    >
+                      <div className="font-medium">{user.role}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        ID: {user.id}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-medium">{selectedUser.role}</h3>
+                    <p className="text-xs text-muted-foreground">ID: {selectedUser.id}</p>
+                  </div>
+                  <button 
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setSelectedUser(null)}
+                  >
+                    Back to user list
+                  </button>
+                </div>
+                <div className="border-l-2 border-primary pl-4">
+                  <h4 className="text-sm font-medium mb-1">Activity Log</h4>
+                  <ul className="space-y-2">
+                    <li className="text-xs">
+                      <span className="text-muted-foreground">{selectedDay}, {selectedHour}:00</span>
+                      <p>{selectedUser.activity}</p>
                     </li>
-                    <li className="flex justify-between">
-                      <span>Manager:</span> 
-                      <span>{day[`hour_${selectedHour}`].Manager}</span>
+                    {/* In a real application, we would fetch more historical logs for this user */}
+                    <li className="text-xs">
+                      <span className="text-muted-foreground">{selectedDay}, {Math.max(0, selectedHour - 2)}:00</span>
+                      <p>Logged into the system</p>
                     </li>
-                    <li className="flex justify-between">
-                      <span>Employee:</span> 
-                      <span>{day[`hour_${selectedHour}`].Employee}</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Guest:</span> 
-                      <span>{day[`hour_${selectedHour}`].Guest}</span>
+                    <li className="text-xs">
+                      <span className="text-muted-foreground">{selectedDay}, {Math.max(0, selectedHour - 4)}:00</span>
+                      <p>Updated profile information</p>
                     </li>
                   </ul>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
