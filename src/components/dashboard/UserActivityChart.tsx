@@ -67,9 +67,11 @@ export function UserActivityChart() {
             <YAxis />
             <Tooltip 
               formatter={(value, name) => {
-                const hourMatch = name.match(/hour_(\d+)/);
-                if (hourMatch) {
-                  return [`${value} users`, `${hourMatch[1]}:00`];
+                if (typeof name === 'string') {
+                  const hourMatch = name.match(/hour_(\d+)/);
+                  if (hourMatch) {
+                    return [`${value} users`, `${hourMatch[1]}:00`];
+                  }
                 }
                 return [value, name];
               }}
